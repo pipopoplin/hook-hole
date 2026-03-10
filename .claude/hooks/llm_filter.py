@@ -21,13 +21,17 @@ import json
 import os
 import sys
 
-# Plugin registry: name -> (module, class)
-PLUGIN_REGISTRY = {
-    "presidio": ("plugins.presidio_plugin", "PresidioPlugin"),
-    "gliner": ("plugins.gliner_plugin", "GLiNERPlugin"),
-    "distilbert": ("plugins.distilbert_plugin", "DistilBERTPlugin"),
-    "spacy": ("plugins.spacy_plugin", "SpaCyPlugin"),
-}
+def load_plugin_registry(hooks_dir: str) -> dict:
+    """Load plugin registry from plugins/plugins.json."""
+    registry_path = os.path.join(hooks_dir, "plugins", "plugins.json")
+    if not os.path.isfile(registry_path):
+        return {}
+    with open(registry_path) as f:
+        data = json.load(f)
+    return {
+        name: (info["module"], info["class"])
+        for name, info in data.get("plugins", {}).items()
+    }
 
 
 def load_config(path: str) -> dict:
@@ -45,12 +49,12 @@ def resolve_field(data: dict, field: str) -> str:
     return str(current) if current is not None else ""
 
 
-def load_plugin(name: str, plugin_config: dict):
+def load_plugin(name: str, plugin_config: dict, registry: dict):
     """Load and configure a plugin by name. Returns None if unavailable."""
-    if name not in PLUGIN_REGISTRY:
+    if name not in registry:
         return None
 
-    module_path, class_name = PLUGIN_REGISTRY[name]
+    module_path, class_name = registry[name]
     try:
         module = importlib.import_module(module_path)
         cls = getattr(module, class_name)
@@ -79,6 +83,7 @@ def main():
         sys.path.insert(0, hooks_dir)
 
     config = load_config(config_path)
+    registry = load_plugin_registry(hooks_dir)
 
     if not config.get("enabled", True):
         sys.exit(0)
@@ -104,7 +109,7 @@ def main():
         if not plugin_configs.get(plugin_name, {}).get("enabled", True):
             continue
 
-        plugin = load_plugin(plugin_name, plugin_configs)
+        plugin = load_plugin(plugin_name, plugin_configs, registry)
         if plugin is None:
             continue
 

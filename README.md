@@ -213,6 +213,10 @@ test_llm_hook.py                 # NLP filter tests (9 cases)
 
 ## License
 
-[Apache License 2.0](LICENSE)
+[Business Source License 1.1](LICENSE)
 
-All NLP plugin dependencies (spaCy, Presidio, transformers, PyTorch) use permissive licenses (MIT/Apache 2.0/BSD).
+Free for non-production use (evaluation, testing, development, personal projects, academic research). Production use requires a commercial license — contact the Licensor.
+
+On the Change Date (4 years after each version's release), that version converts to [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0).
+
+NLP plugin dependencies (spaCy, Presidio, transformers, PyTorch) use permissive licenses (MIT/Apache 2.0/BSD).

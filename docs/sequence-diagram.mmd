@@ -1,0 +1,40 @@
+sequenceDiagram
+    participant User
+    participant ClaudeCode as Claude Code
+    participant Filter as regex_filter.py
+    participant Config as filter_rules.json
+    participant Shell as Bash Shell
+
+    User->>ClaudeCode: Prompt (e.g. "run curl to fetch data")
+    ClaudeCode->>ClaudeCode: Claude decides to use Bash tool
+
+    Note over ClaudeCode: PreToolUse event fires (matcher: Bash)
+
+    ClaudeCode->>Filter: JSON on stdin<br/>{"tool_name":"Bash","tool_input":{"command":"..."}}
+    Filter->>Config: Load rules
+
+    loop For each rule (top to bottom, first match wins)
+        Filter->>Filter: resolve_field() — extract target field<br/>e.g. tool_input.command
+        Filter->>Filter: Check tool_name filter (if set)
+        Filter->>Filter: Match patterns against field value
+
+        alt Rule matches with action: deny
+            Filter-->>ClaudeCode: {"permissionDecision":"deny", reason}<br/>exit 0
+            ClaudeCode-->>User: Command blocked with reason
+        else Rule matches with action: allow
+            Filter-->>ClaudeCode: (empty stdout) exit 0
+            ClaudeCode->>Shell: Execute command
+            Shell-->>ClaudeCode: Command output
+            ClaudeCode-->>User: Result
+        else Rule matches with action: ask
+            Filter-->>ClaudeCode: {"permissionDecision":"ask", reason}<br/>exit 0
+            ClaudeCode-->>User: Approve this command?
+            User->>ClaudeCode: Approve / Deny
+        end
+    end
+
+    Note over Filter: No rule matched
+    Filter-->>ClaudeCode: (empty stdout) exit 0
+    ClaudeCode->>Shell: Execute command
+    Shell-->>ClaudeCode: Command output
+    ClaudeCode-->>User: Result

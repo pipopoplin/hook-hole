@@ -1,0 +1,16 @@
+flowchart TD
+    A[Hook input received on stdin] --> B[Load rules from config JSON]
+    B --> C[Evaluate rules top to bottom]
+
+    C --> D{Rule 1: block_sensitive_data<br/>API keys, tokens, passwords?}
+    D -->|Pattern matches| E[DENY - credentials detected]
+    D -->|No match| F{Rule 2: allow_trusted_endpoints<br/>localhost, GitHub, PyPI, etc.?}
+    F -->|Pattern matches| G[ALLOW - trusted host]
+    F -->|No match| H{Rule 3: block_untrusted_network<br/>curl, wget, requests, ssh, etc.?}
+    H -->|Pattern matches| I[DENY - untrusted network call]
+    H -->|No match| J[ALLOW - no rules triggered]
+
+    style E fill:#ff6b6b,color:#fff
+    style I fill:#ff6b6b,color:#fff
+    style G fill:#51cf66,color:#fff
+    style J fill:#51cf66,color:#fff

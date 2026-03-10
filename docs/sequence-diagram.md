@@ -108,7 +108,6 @@ flowchart TD
     subgraph Available Plugins
         P1[presidio ~0.4ms]
         P2[spacy ~3ms]
-        P3[gliner ~18ms]
-        P4[distilbert ~25ms]
+        P3[distilbert ~25ms]
     end
 ```

@@ -45,9 +45,6 @@ python -m spacy download en_core_web_sm
 # Microsoft Presidio — fastest, ~0.4ms, known PII types
 pip install presidio-analyzer
 
-# GLiNER — zero-shot NER, ~18ms, custom entity labels
-pip install gliner
-
 # DistilBERT — best accuracy, ~25ms
 pip install transformers torch
 ```
@@ -98,7 +95,6 @@ Tries plugins in priority order from `.claude/hooks/llm_filter_config.json`, use
 |--------|------|---------|----------|
 | presidio | SubMillisecond | ~0.4ms | Production, known PII types |
 | spacy | EdgeDevice | ~3ms | Low resource, good default |
-| gliner | ZeroShot | ~18ms | Custom entity labels |
 | distilbert | HighAccuracy | ~25ms | Maximum detection accuracy |
 
 ## Configuration
@@ -197,7 +193,6 @@ class MyPlugin(SensitiveContentPlugin):
       base.py                    # SensitiveContentPlugin ABC + DetectionResult
       presidio_plugin.py         # Microsoft Presidio backend
       spacy_plugin.py            # spaCy + regex backend
-      gliner_plugin.py           # GLiNER zero-shot backend
       distilbert_plugin.py       # DistilBERT NER backend
 docs/
   sequence-diagram.svg           # Full pipeline sequence diagram
@@ -218,6 +213,10 @@ test_llm_hook.py                 # NLP filter tests (9 cases)
 
 ## License
 
-[Apache License 2.0](LICENSE)
+[Business Source License 1.1](LICENSE)
 
-All NLP plugin dependencies (spaCy, Presidio, transformers, PyTorch) use permissive licenses (MIT/Apache 2.0/BSD). The GLiNER model default (`urchade/gliner_medium-v2.1`) is Apache 2.0 — avoid `gliner_base` v0 which is CC BY-NC (non-commercial).
+Free for non-production use (evaluation, testing, development, personal projects, academic research). Production use requires a commercial license — contact the Licensor.
+
+On the Change Date (4 years after each version's release), that version converts to [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0).
+
+NLP plugin dependencies (spaCy, Presidio, transformers, PyTorch) use permissive licenses (MIT/Apache 2.0/BSD).

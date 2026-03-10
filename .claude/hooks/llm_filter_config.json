@@ -1,6 +1,6 @@
 {
   "enabled": true,
-  "plugin_priority": ["presidio", "spacy", "gliner", "distilbert"],
+  "plugin_priority": ["presidio", "spacy", "distilbert"],
   "fallback_strategy": "first_available",
   "field": "tool_input.command",
   "min_confidence": 0.7,
@@ -14,12 +14,6 @@
       "enabled": true,
       "languages": ["en"],
       "score_threshold": 0.6
-    },
-    "gliner": {
-      "enabled": true,
-      "model": "urchade/gliner_medium-v2.1",
-      "labels": ["person", "email", "phone number", "social security number", "credit card", "api key"],
-      "threshold": 0.5
     },
     "distilbert": {
       "enabled": true,

@@ -10,9 +10,6 @@ spacy>=3.7
 # Microsoft Presidio — known PII, ~0.4ms
 # presidio-analyzer>=2.2
 
-# GLiNER — zero-shot NER, ~18ms
-# gliner>=0.2
-
 # DistilBERT / NerGuard — best accuracy, ~25ms
 # transformers>=4.36
 # torch>=2.1

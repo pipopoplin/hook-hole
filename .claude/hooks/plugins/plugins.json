@@ -8,14 +8,6 @@
       "description": "Microsoft Presidio — known PII types, max speed",
       "install": "pip install presidio-analyzer"
     },
-    "gliner": {
-      "module": "plugins.gliner_plugin",
-      "class": "GLiNERPlugin",
-      "tier": "ZeroShot",
-      "latency": "~18ms",
-      "description": "GLiNER — zero-shot NER, flexible custom labels (use v2.1+ for Apache 2.0 license)",
-      "install": "pip install gliner"
-    },
     "distilbert": {
       "module": "plugins.distilbert_plugin",
       "class": "DistilBERTPlugin",

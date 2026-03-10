@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Claude Code hook system with two complementary security layers:
 1. **regex_filter** — fast, deterministic regex rules for endpoint allowlisting and credential detection
-2. **llm_filter** — NLP-based PII detection with pluggable backends (Presidio, spaCy, GLiNER, DistilBERT)
+2. **llm_filter** — NLP-based PII detection with pluggable backends (Presidio, spaCy, DistilBERT)
 
 Both run as `PreToolUse` hooks on `Bash` commands. The regex filter runs first (<1ms), the NLP filter second (3-25ms depending on plugin).
 
@@ -49,7 +49,7 @@ Rule format: `field` (dot-path into hook JSON), `action` (allow/deny/ask), `matc
 - `.claude/hooks/llm_filter_config.json` — Plugin priority, confidence thresholds, entity types, per-plugin settings.
 - `.claude/hooks/plugins/plugins.json` — Plugin registry. Maps names to module/class paths. Add custom plugins here without touching Python code.
 - `.claude/hooks/plugins/base.py` — `SensitiveContentPlugin` ABC and `DetectionResult` dataclass.
-- `.claude/hooks/plugins/{presidio,gliner,distilbert,spacy}_plugin.py` — Backend implementations.
+- `.claude/hooks/plugins/{presidio,distilbert,spacy}_plugin.py` — Backend implementations.
 
 ### Adding Trusted Endpoints
 

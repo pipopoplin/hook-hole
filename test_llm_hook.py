@@ -21,7 +21,6 @@ def detect_available_plugins() -> list[str]:
     checks = {
         "presidio": "presidio_analyzer",
         "spacy": "spacy",
-        "gliner": "gliner",
         "distilbert": "transformers",
     }
     for name, module in checks.items():
@@ -181,7 +180,6 @@ def main():
         print("  No NLP plugins installed — skipping detection tests")
         print("  Install one: pip install presidio-analyzer")
         print("               pip install spacy && python -m spacy download en_core_web_sm")
-        print("               pip install gliner")
         print("               pip install transformers torch")
 
     print()

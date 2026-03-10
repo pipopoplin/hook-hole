@@ -11,7 +11,6 @@ Usage:
 
 Plugins (selected via config, first available wins):
   presidio   — Microsoft Presidio, ~0.4ms, known PII types
-  gliner     — GLiNER zero-shot NER, ~18ms, custom labels
   distilbert — DistilBERT/NerGuard, ~25ms, best accuracy
   spacy      — spaCy sm + regex, ~3ms, edge/low-resource
 """
@@ -98,7 +97,7 @@ def main():
     if not text:
         sys.exit(0)
 
-    priority = config.get("plugin_priority", ["presidio", "spacy", "gliner", "distilbert"])
+    priority = config.get("plugin_priority", ["presidio", "spacy", "distilbert"])
     plugin_configs = config.get("plugins", {})
     min_confidence = config.get("min_confidence", 0.7)
     action = config.get("action", "deny")

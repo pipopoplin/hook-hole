@@ -9,7 +9,7 @@ class GLiNERPlugin(SensitiveContentPlugin):
 
     def __init__(self):
         self._model = None
-        self._model_name = "urchade/gliner_base"
+        self._model_name = "urchade/gliner_medium-v2.1"
         self._threshold = 0.5
         self._labels = [
             "person", "email", "phone number",

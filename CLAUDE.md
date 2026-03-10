@@ -4,41 +4,62 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This project implements a general-purpose regex filter hook for Claude Code. It intercepts tool calls (e.g. Bash commands) and applies configurable regex rules to allow, deny, or escalate them. Rules are defined in a JSON config file, not hardcoded.
+Claude Code hook system with two complementary security layers:
+1. **regex_filter** — fast, deterministic regex rules for endpoint allowlisting and credential detection
+2. **llm_filter** — NLP-based PII detection with pluggable backends (Presidio, spaCy, GLiNER, DistilBERT)
+
+Both run as `PreToolUse` hooks on `Bash` commands. The regex filter runs first (<1ms), the NLP filter second (3-25ms depending on plugin).
 
 ## Commands
 
 ```bash
-# Run the hook test suite
-python3 test_hook.py
+# Run all tests
+python3 test_hook.py && python3 test_llm_hook.py
 
-# Test the filter directly with piped JSON
+# Test regex filter directly
 echo '{"tool_name":"Bash","tool_input":{"command":"curl https://example.com"}}' | python3 .claude/hooks/regex_filter.py .claude/hooks/filter_rules.json
+
+# Test NLP filter directly
+echo '{"tool_name":"Bash","tool_input":{"command":"send to john@example.com"}}' | python3 .claude/hooks/llm_filter.py .claude/hooks/llm_filter_config.json
+
+# Install NLP plugin (pick one)
+pip install spacy && python -m spacy download en_core_web_sm
 ```
 
 ## Architecture
 
-### Hook System
+### Hook Pipeline
 
-- `.claude/settings.json` — Registers the `PreToolUse` hook (matcher: `Bash`) pointing to `regex_filter.py`
-- `.claude/hooks/regex_filter.py` — General-purpose regex filter engine. Reads rules from a JSON config, evaluates them in order against hook input, and returns a `permissionDecision` (`allow`/`deny`/`ask`)
-- `.claude/hooks/filter_rules.json` — Rule definitions. Rules are evaluated top-to-bottom; first match wins
+`.claude/settings.json` registers two `PreToolUse` hooks (matcher: `Bash`) that run in sequence:
 
-### Rule Config Format
+```
+Bash command → regex_filter.py (rules) → llm_filter.py (NLP) → execute or block
+```
 
-Each rule in `filter_rules.json` has:
-- `field` — dot-path into the hook input JSON to match against (e.g. `tool_input.command`)
-- `action` — `allow`, `deny`, or `ask`
-- `match` — `any` (default) or `all` patterns must match
-- `patterns` — list of regex strings or `{"pattern": "...", "label": "..."}` objects
-- `tool_name` — optional regex to restrict the rule to specific tools
-- `enabled` — optional, defaults to `true`
+### Regex Filter
 
-Rules are evaluated in order. First matching deny/ask rule wins, unless an `allow` rule matches first. The shipped config has three rules in this order: block sensitive data, allow trusted endpoints, block untrusted network calls.
+- `.claude/hooks/regex_filter.py` — General-purpose regex engine. Reads any JSON rule config, evaluates rules top-to-bottom, first match wins.
+- `.claude/hooks/filter_rules.json` — Shipped rules: (1) block sensitive data, (2) allow trusted endpoints, (3) block untrusted network calls.
+
+Rule format: `field` (dot-path into hook JSON), `action` (allow/deny/ask), `match` (any/all), `patterns` (regex list), optional `tool_name` filter and `enabled` toggle.
+
+### NLP Filter
+
+- `.claude/hooks/llm_filter.py` — Plugin-based NLP hook. Loads plugin registry and detection config, tries plugins in priority order, uses first available.
+- `.claude/hooks/llm_filter_config.json` — Plugin priority, confidence thresholds, entity types, per-plugin settings.
+- `.claude/hooks/plugins/plugins.json` — Plugin registry. Maps names to module/class paths. Add custom plugins here without touching Python code.
+- `.claude/hooks/plugins/base.py` — `SensitiveContentPlugin` ABC and `DetectionResult` dataclass.
+- `.claude/hooks/plugins/{presidio,gliner,distilbert,spacy}_plugin.py` — Backend implementations.
 
 ### Adding Trusted Endpoints
 
-Add a pattern to the `allow_trusted_endpoints` rule in `.claude/hooks/filter_rules.json`:
+Add a pattern to `allow_trusted_endpoints` in `.claude/hooks/filter_rules.json`:
 ```json
 {"pattern": "https?://api\\.your-company\\.com", "label": "Your API"}
 ```
+
+### Adding a Custom NLP Plugin
+
+1. Create `.claude/hooks/plugins/my_plugin.py` extending `SensitiveContentPlugin`
+2. Register in `.claude/hooks/plugins/plugins.json`
+3. Enable and configure in `.claude/hooks/llm_filter_config.json`

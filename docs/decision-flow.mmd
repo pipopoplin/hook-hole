@@ -1,16 +1,25 @@
 flowchart TD
-    A[Hook input received on stdin] --> B[Load rules from config JSON]
-    B --> C[Evaluate rules top to bottom]
+    A[Bash command intercepted] --> B[Hook 1: regex_filter.py]
+    B --> C{Rule 1: block_sensitive_data<br/>API keys, tokens, passwords?}
+    C -->|Match| D[DENY - credentials detected]
+    C -->|No match| E{Rule 2: allow_trusted_endpoints<br/>localhost, GitHub, PyPI, etc.?}
+    E -->|Match| F[ALLOW - trusted host]
+    E -->|No match| G{Rule 3: block_untrusted_network<br/>curl, wget, requests, ssh, etc.?}
+    G -->|Match| H[DENY - untrusted network call]
+    G -->|No match| I[ALLOW - no regex rules triggered]
 
-    C --> D{Rule 1: block_sensitive_data<br/>API keys, tokens, passwords?}
-    D -->|Pattern matches| E[DENY - credentials detected]
-    D -->|No match| F{Rule 2: allow_trusted_endpoints<br/>localhost, GitHub, PyPI, etc.?}
-    F -->|Pattern matches| G[ALLOW - trusted host]
-    F -->|No match| H{Rule 3: block_untrusted_network<br/>curl, wget, requests, ssh, etc.?}
-    H -->|Pattern matches| I[DENY - untrusted network call]
-    H -->|No match| J[ALLOW - no rules triggered]
+    I --> J[Hook 2: llm_filter.py]
+    F --> J
+    J --> K{NLP plugin available?}
+    K -->|No| L[ALLOW - no plugin, skip NLP]
+    K -->|Yes| M{PII detected?<br/>email, SSN, credit card, name...}
+    M -->|Yes, above threshold| N[DENY - PII found]
+    M -->|No| O[ALLOW - clean]
 
-    style E fill:#ff6b6b,color:#fff
-    style I fill:#ff6b6b,color:#fff
-    style G fill:#51cf66,color:#fff
-    style J fill:#51cf66,color:#fff
+    style D fill:#ff6b6b,color:#fff
+    style H fill:#ff6b6b,color:#fff
+    style N fill:#ff6b6b,color:#fff
+    style F fill:#51cf66,color:#fff
+    style I fill:#51cf66,color:#fff
+    style L fill:#51cf66,color:#fff
+    style O fill:#51cf66,color:#fff

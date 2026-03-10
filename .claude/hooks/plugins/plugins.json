@@ -13,7 +13,7 @@
       "class": "GLiNERPlugin",
       "tier": "ZeroShot",
       "latency": "~18ms",
-      "description": "GLiNER — zero-shot NER, flexible custom labels",
+      "description": "GLiNER — zero-shot NER, flexible custom labels (use v2.1+ for Apache 2.0 license)",
       "install": "pip install gliner"
     },
     "distilbert": {

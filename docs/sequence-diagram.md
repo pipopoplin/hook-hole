@@ -1,13 +1,15 @@
-# Regex Filter Hook — Diagrams
+# Hook System — Diagrams
 
-## Sequence Diagram
+## Full Pipeline Sequence
 
 ```mermaid
 sequenceDiagram
     participant User
     participant ClaudeCode as Claude Code
-    participant Filter as regex_filter.py
-    participant Config as filter_rules.json
+    participant Regex as regex_filter.py
+    participant Rules as filter_rules.json
+    participant NLP as llm_filter.py
+    participant Plugins as plugins/
     participant Shell as Bash Shell
 
     User->>ClaudeCode: Prompt (e.g. "run curl to fetch data")
@@ -15,41 +17,57 @@ sequenceDiagram
 
     Note over ClaudeCode: PreToolUse event fires (matcher: Bash)
 
-    ClaudeCode->>Filter: JSON on stdin<br/>{"tool_name":"Bash","tool_input":{"command":"..."}}
-    Filter->>Config: Load rules
+    rect rgb(240, 248, 255)
+        Note over Regex,Rules: Hook 1: Regex Filter
+        ClaudeCode->>Regex: JSON on stdin
+        Regex->>Rules: Load rules
 
-    loop For each rule (top to bottom, first match wins)
-        Filter->>Filter: resolve_field() — extract target field<br/>e.g. tool_input.command
-        Filter->>Filter: Check tool_name filter (if set)
-        Filter->>Filter: Match patterns against field value
-
-        alt Rule matches with action: deny
-            Filter-->>ClaudeCode: {"permissionDecision":"deny", reason}<br/>exit 0
-            ClaudeCode-->>User: Command blocked with reason
-        else Rule matches with action: allow
-            Filter-->>ClaudeCode: (empty stdout) exit 0
-            ClaudeCode->>Shell: Execute command
-            Shell-->>ClaudeCode: Command output
-            ClaudeCode-->>User: Result
-        else Rule matches with action: ask
-            Filter-->>ClaudeCode: {"permissionDecision":"ask", reason}<br/>exit 0
-            ClaudeCode-->>User: Approve this command?
-            User->>ClaudeCode: Approve / Deny
+        loop For each rule (top to bottom, first match wins)
+            Regex->>Regex: Match patterns against field value
+            alt deny
+                Regex-->>ClaudeCode: {"permissionDecision":"deny"}
+                ClaudeCode-->>User: Command blocked
+            else allow
+                Regex-->>ClaudeCode: (empty stdout) exit 0
+            else ask
+                Regex-->>ClaudeCode: {"permissionDecision":"ask"}
+                ClaudeCode-->>User: Approve?
+            end
         end
     end
 
-    Note over Filter: No rule matched
-    Filter-->>ClaudeCode: (empty stdout) exit 0
+    rect rgb(255, 248, 240)
+        Note over NLP,Plugins: Hook 2: NLP Filter
+        ClaudeCode->>NLP: JSON on stdin
+        NLP->>Plugins: Load plugins.json registry
+
+        loop For each plugin in priority order
+            NLP->>Plugins: is_available()?
+            alt Available
+                NLP->>Plugins: detect(text, entity_types)
+                Plugins-->>NLP: DetectionResult[]
+                alt PII found above min_confidence
+                    NLP-->>ClaudeCode: {"permissionDecision":"deny"}
+                    ClaudeCode-->>User: PII detected
+                else No PII
+                    NLP-->>ClaudeCode: (empty stdout) exit 0
+                end
+            else Not available
+                NLP->>NLP: Try next plugin
+            end
+        end
+    end
+
     ClaudeCode->>Shell: Execute command
     Shell-->>ClaudeCode: Command output
     ClaudeCode-->>User: Result
 ```
 
-## Decision Flow (with shipped rules)
+## Regex Filter Decision Flow
 
 ```mermaid
 flowchart TD
-    A[Hook input received on stdin] --> B[Load rules from config JSON]
+    A[Hook input received on stdin] --> B[Load rules from filter_rules.json]
     B --> C[Evaluate rules top to bottom]
 
     C --> D{Rule 1: block_sensitive_data<br/>API keys, tokens, passwords?}
@@ -64,4 +82,33 @@ flowchart TD
     style I fill:#ff6b6b,color:#fff
     style G fill:#51cf66,color:#fff
     style J fill:#51cf66,color:#fff
+```
+
+## NLP Filter Plugin Flow
+
+```mermaid
+flowchart TD
+    A[Hook input received on stdin] --> B[Load llm_filter_config.json]
+    B --> C{enabled?}
+    C -->|No| D[ALLOW - hook disabled]
+    C -->|Yes| E[Load plugins.json registry]
+    E --> F[Try plugins in priority order]
+
+    F --> G{Plugin installed?}
+    G -->|No| H[Try next plugin]
+    H --> G
+    G -->|Yes| I[Run detect on command text]
+    I --> K{Findings above<br/>min_confidence?}
+    K -->|No| D
+    K -->|Yes| L[DENY - PII detected<br/>entity type + confidence]
+
+    style D fill:#51cf66,color:#fff
+    style L fill:#ff6b6b,color:#fff
+
+    subgraph Available Plugins
+        P1[presidio ~0.4ms]
+        P2[spacy ~3ms]
+        P3[gliner ~18ms]
+        P4[distilbert ~25ms]
+    end
 ```

@@ -98,13 +98,19 @@ def main():
         sys.exit(0)
 
     priority = config.get("plugin_priority", ["presidio", "spacy", "distilbert"])
+    supplementary = config.get("supplementary_plugins", ["prompt_injection"])
     plugin_configs = config.get("plugins", {})
     min_confidence = config.get("min_confidence", 0.7)
     action = config.get("action", "deny")
     entity_types = config.get("entity_types")
 
-    # Find first available plugin and run detection
+    all_findings = []
+    reporting_plugin = None
+
+    # Find first available PII plugin and run detection
     for plugin_name in priority:
+        if plugin_name in supplementary:
+            continue
         if not plugin_configs.get(plugin_name, {}).get("enabled", True):
             continue
 
@@ -119,38 +125,60 @@ def main():
             continue
 
         findings = [d for d in detections if d.score >= min_confidence]
+        if findings:
+            all_findings.extend(findings)
+            reporting_plugin = plugin
+        break  # first_available: only try the first working PII plugin
 
-        if not findings:
-            sys.exit(0)
+    # Run supplementary plugins (e.g. prompt injection) independently
+    for plugin_name in supplementary:
+        if not plugin_configs.get(plugin_name, {}).get("enabled", True):
+            continue
 
-        findings_text = "\n".join(
-            f"  - {d.entity_type}: '{d.text}' (confidence: {d.score:.2f})"
-            for d in findings
-        )
+        plugin = load_plugin(plugin_name, plugin_configs, registry)
+        if plugin is None:
+            continue
 
-        hook_event = hook_input.get("hook_event_name", "PreToolUse")
+        try:
+            detections = plugin.detect(text, entity_types)
+        except Exception as e:
+            print(f"Plugin {plugin_name} error: {e}", file=sys.stderr)
+            continue
 
-        if hook_event == "PreToolUse":
-            output = {
-                "hookSpecificOutput": {
-                    "hookEventName": "PreToolUse",
-                    "permissionDecision": "deny" if action == "deny" else "ask",
-                    "permissionDecisionReason": (
-                        f"Sensitive content detected by {plugin.name} ({plugin.tier}):\n"
-                        f"{findings_text}"
-                    ),
-                }
-            }
-        else:
-            output = {
-                "decision": "block" if action == "deny" else action,
-                "reason": f"Sensitive content detected by {plugin.name}:\n{findings_text}",
-            }
+        findings = [d for d in detections if d.score >= min_confidence]
+        if findings:
+            all_findings.extend(findings)
+            if reporting_plugin is None:
+                reporting_plugin = plugin
 
-        json.dump(output, sys.stdout)
+    if not all_findings:
         sys.exit(0)
 
-    # No plugin available — allow (regex_filter is the primary guard)
+    findings_text = "\n".join(
+        f"  - {d.entity_type}: '{d.text}' (confidence: {d.score:.2f})"
+        for d in all_findings
+    )
+
+    hook_event = hook_input.get("hook_event_name", "PreToolUse")
+
+    if hook_event == "PreToolUse":
+        output = {
+            "hookSpecificOutput": {
+                "hookEventName": "PreToolUse",
+                "permissionDecision": "deny" if action == "deny" else "ask",
+                "permissionDecisionReason": (
+                    f"Sensitive content detected by {reporting_plugin.name} ({reporting_plugin.tier}):\n"
+                    f"{findings_text}"
+                ),
+            }
+        }
+    else:
+        output = {
+            "decision": "block" if action == "deny" else action,
+            "reason": f"Sensitive content detected by {reporting_plugin.name}:\n{findings_text}",
+        }
+
+    json.dump(output, sys.stdout)
     sys.exit(0)
 
 

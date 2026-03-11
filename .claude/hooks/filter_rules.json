@@ -22,6 +22,135 @@
       ]
     },
     {
+      "name": "block_employee_hr_ids",
+      "description": "Block commands containing employee IDs, HR numbers, or personnel identifiers",
+      "field": "tool_input.command",
+      "action": "deny",
+      "match": "any",
+      "message": "Employee/HR identifier detected. Remove personnel data before running.",
+      "patterns": [
+        {"pattern": "\\bEMP[-_]?\\d{4,8}\\b", "label": "Employee ID (EMP-NNNNN)"},
+        {"pattern": "\\bHR[-_]\\d{4,8}\\b", "label": "HR number (HR-NNNNN)"},
+        {"pattern": "\\bSTAFF[-_]?\\d{4,8}\\b", "label": "Staff ID (STAFF-NNNNN)"},
+        {"pattern": "\\bemployee[_-]?id\\s*[:=]\\s*['\"]?\\w{3,}", "label": "employee_id assignment"},
+        {"pattern": "\\bpersonnel[_-]?(number|id|no)\\s*[:=]\\s*['\"]?\\w{3,}", "label": "personnel number assignment"},
+        {"pattern": "\\bpayroll[_-]?(id|number|no)\\s*[:=]\\s*['\"]?\\w{3,}", "label": "payroll ID assignment"}
+      ]
+    },
+    {
+      "name": "block_iban_bank_accounts",
+      "description": "Block commands containing IBAN or bank account numbers",
+      "field": "tool_input.command",
+      "action": "deny",
+      "match": "any",
+      "message": "Bank account / IBAN detected. Remove financial data before running.",
+      "patterns": [
+        {"pattern": "\\b[A-Z]{2}\\d{2}\\s?[A-Z0-9]{4}\\s?\\d{4}\\s?\\d{4}\\s?\\d{4}\\s?(?:\\d{4}\\s?){0,4}\\d{0,4}\\b", "label": "IBAN"},
+        {"pattern": "\\bIBAN\\s*[:=]\\s*['\"]?[A-Z]{2}\\d{2}", "label": "IBAN assignment"},
+        {"pattern": "\\baccount[_-]?(?:number|num|no)\\s*[:=]\\s*['\"]?\\d{6,18}", "label": "Bank account number assignment"},
+        {"pattern": "\\brouting[_-]?(?:number|num|no)\\s*[:=]\\s*['\"]?\\d{9}", "label": "ABA routing number"},
+        {"pattern": "\\bsort[_-]?code\\s*[:=]\\s*['\"]?\\d{2}[-\\s]?\\d{2}[-\\s]?\\d{2}", "label": "UK sort code"},
+        {"pattern": "\\bswift\\s*[:=]\\s*['\"]?[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?", "label": "SWIFT/BIC code"},
+        {"pattern": "\\bBIC\\s*[:=]\\s*['\"]?[A-Z]{6}[A-Z0-9]{2}", "label": "BIC code"}
+      ]
+    },
+    {
+      "name": "block_passport_licence",
+      "description": "Block commands containing passport or driver licence numbers",
+      "field": "tool_input.command",
+      "action": "deny",
+      "match": "any",
+      "message": "Government ID (passport/licence) detected. Remove before running.",
+      "patterns": [
+        {"pattern": "\\bpassport[_\\s-]?(?:number|num|no|#|id)\\s*[:=]\\s*['\"]?[A-Z0-9]{5,12}", "label": "Passport number assignment"},
+        {"pattern": "\\bdriver'?s?[_\\s-]?licen[cs]e[_\\s-]?(?:number|num|no|#|id)\\s*[:=]\\s*['\"]?[A-Z0-9]{5,15}", "label": "Driver licence number assignment"},
+        {"pattern": "\\bpassport\\s*[:=]\\s*['\"]?[A-Z]\\d{7,8}\\b", "label": "Passport value (letter + 7-8 digits)"},
+        {"pattern": "\\bDL[_\\s-]?(?:number|num|no|#|id)\\s*[:=]\\s*['\"]?[A-Z0-9]{5,15}", "label": "DL number assignment"},
+        {"pattern": "\\bnational[_-]?id\\s*[:=]\\s*['\"]?[A-Z0-9]{5,15}", "label": "National ID assignment"}
+      ]
+    },
+    {
+      "name": "block_base64_payloads",
+      "description": "Block commands containing base64-encoded payloads (potential exfiltration or obfuscation)",
+      "field": "tool_input.command",
+      "action": "deny",
+      "match": "any",
+      "message": "Base64-encoded payload detected. This may be data exfiltration or obfuscation.",
+      "patterns": [
+        {"pattern": "\\bbase64\\s+(--decode|-d|--encode|-e|--wrap)?", "label": "base64 CLI tool invocation"},
+        {"pattern": "\\|\\s*base64\\b", "label": "Pipe to/from base64"},
+        {"pattern": "\\bbase64\\.b64(encode|decode)\\s*\\(", "label": "Python base64 encode/decode"},
+        {"pattern": "\\batob\\s*\\(|\\bbtoa\\s*\\(", "label": "JS atob/btoa"},
+        {"pattern": "\\bBuffer\\.from\\s*\\([^)]+,\\s*['\"]base64['\"]", "label": "Node.js Buffer.from base64"},
+        {"pattern": "[A-Za-z0-9+/]{80,}={0,2}", "label": "Long base64-encoded string (80+ chars)"},
+        {"pattern": "\\becho\\s+['\"]?[A-Za-z0-9+/]{40,}={0,2}['\"]?\\s*\\|", "label": "Echo base64 string piped"}
+      ]
+    },
+    {
+      "name": "block_prompt_injection",
+      "description": "Block commands containing prompt injection or jailbreak phrases",
+      "field": "tool_input.command",
+      "action": "deny",
+      "match": "any",
+      "message": "Potential prompt injection detected. Command contains suspicious instruction patterns.",
+      "patterns": [
+        {"pattern": "\\bignore\\s+(all\\s+)?(previous|prior|above|earlier)\\s+(instructions?|rules?|prompts?|guidelines?)", "label": "Ignore previous instructions"},
+        {"pattern": "\\byou\\s+are\\s+now\\s+(a|an|in)\\b", "label": "Role reassignment (you are now)"},
+        {"pattern": "\\bact\\s+as\\s+(a|an|if)\\b", "label": "Role reassignment (act as)"},
+        {"pattern": "\\bpretend\\s+(you\\s+are|to\\s+be|you'?re)\\b", "label": "Role reassignment (pretend)"},
+        {"pattern": "\\bsystem\\s*:\\s*you\\s+are\\b", "label": "System prompt override"},
+        {"pattern": "\\bjailbreak\\b", "label": "Jailbreak keyword"},
+        {"pattern": "\\bDAN\\s+(mode|prompt)\\b", "label": "DAN jailbreak"},
+        {"pattern": "\\bdo\\s+anything\\s+now\\b", "label": "Do Anything Now jailbreak"},
+        {"pattern": "\\b(disregard|forget|override|bypass)\\s+(your|all|the|any)\\s+(instructions?|rules?|safety|guardrails?|filters?|restrictions?)", "label": "Override instructions"},
+        {"pattern": "\\bnew\\s+instructions?\\s*:", "label": "New instructions injection"},
+        {"pattern": "\\b(sudo|admin)\\s+mode\\b", "label": "Privilege escalation phrase"},
+        {"pattern": "\\bno\\s+(restrictions?|limitations?|rules?|guardrails?)\\b", "label": "Remove restrictions"},
+        {"pattern": "<\\s*/?\\s*(system|prompt|instruction|context)\\s*>", "label": "XML tag injection (system/prompt)"}
+      ]
+    },
+    {
+      "name": "block_sensitive_file_access",
+      "description": "Block commands that read, copy, or exfiltrate sensitive system/config files",
+      "field": "tool_input.command",
+      "action": "deny",
+      "match": "any",
+      "message": "Access to sensitive file detected. This file may contain credentials or system secrets.",
+      "patterns": [
+        {"pattern": "/etc/(passwd|shadow|sudoers)\\b", "label": "System auth files"},
+        {"pattern": "/etc/ssh/ssh_host_[a-z_]+key\\b", "label": "SSH host keys"},
+        {"pattern": "~?/?\\.ssh/(id_[a-z]+|authorized_keys|known_hosts|config)\\b", "label": "User SSH files"},
+        {"pattern": "~?/?\\.gnupg/", "label": "GPG keyring"},
+        {"pattern": "~?/?\\.(bash_history|zsh_history|python_history|mysql_history|psql_history)\\b", "label": "Shell/tool history files"},
+        {"pattern": "~?/?\\.(netrc|pgpass|my\\.cnf)\\b", "label": "Credential dotfiles (.netrc, .pgpass, .my.cnf)"},
+        {"pattern": "~?/?\\.(env|env\\.local|env\\.production|env\\.staging)\\b", "label": "Environment files (.env)"},
+        {"pattern": "~?/?\\.aws/(credentials|config)\\b", "label": "AWS credentials file"},
+        {"pattern": "~?/?\\.docker/config\\.json\\b", "label": "Docker credentials"},
+        {"pattern": "~?/?\\.kube/config\\b", "label": "Kubernetes config"},
+        {"pattern": "~?/?\\.(npmrc|pypirc)\\b", "label": "Package manager auth (.npmrc, .pypirc)"},
+        {"pattern": "\\bwallet\\.dat\\b", "label": "Crypto wallet file"},
+        {"pattern": "\\b(master\\.key|credentials\\.yml\\.enc)\\b", "label": "Rails master key / encrypted credentials"}
+      ]
+    },
+    {
+      "name": "block_database_connection_strings",
+      "description": "Block commands containing database connection strings with embedded credentials",
+      "field": "tool_input.command",
+      "action": "deny",
+      "match": "any",
+      "message": "Database connection string detected. Remove credentials/connection details before running.",
+      "patterns": [
+        {"pattern": "(mysql|mariadb|postgres(ql)?|psql|mssql|mongodb(\\+srv)?|redis|amqp|rabbitmq|cockroachdb|couchdb)://[^\\s'\"]+@[^\\s'\"]+", "label": "Database URI with credentials (user@host)"},
+        {"pattern": "\\bDATABASE_URL\\s*=\\s*['\"]?\\w+://", "label": "DATABASE_URL assignment"},
+        {"pattern": "\\b(MONGO_URI|MONGODB_URI|REDIS_URL|AMQP_URL)\\s*=\\s*['\"]?\\w+://", "label": "DB-specific URL env var"},
+        {"pattern": "\\b(connection[_-]?string|conn[_-]?str)\\s*[:=]\\s*['\"]?\\w+://[^\\s]+@", "label": "connection_string assignment"},
+        {"pattern": "Server\\s*=\\s*[^;]+;.*(?:User\\s*Id|Uid)\\s*=\\s*[^;]+;.*(?:Password|Pwd)\\s*=", "label": "ADO.NET/ODBC connection string"},
+        {"pattern": "\\bjdbc:(mysql|postgresql|sqlserver|oracle)://[^\\s'\"]+", "label": "JDBC connection string"},
+        {"pattern": "Data\\s+Source\\s*=\\s*[^;]+;.*Password\\s*=", "label": "Data Source with password"},
+        {"pattern": "\\bDSN\\s*=\\s*['\"]?[^\\s;]+.*(?:PWD|PASSWORD)\\s*=", "label": "ODBC DSN with password"}
+      ]
+    },
+    {
       "name": "allow_trusted_endpoints",
       "description": "Allow network calls to trusted hosts",
       "field": "tool_input.command",

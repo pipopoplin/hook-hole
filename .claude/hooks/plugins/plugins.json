@@ -23,6 +23,14 @@
       "latency": "~3ms",
       "description": "spaCy sm + regex — edge/low-resource",
       "install": "pip install spacy && python -m spacy download en_core_web_sm"
+    },
+    "prompt_injection": {
+      "module": "plugins.prompt_injection_plugin",
+      "class": "PromptInjectionPlugin",
+      "tier": "EdgeDevice",
+      "latency": "~1ms",
+      "description": "Prompt injection / jailbreak detection — heuristic + keyword",
+      "install": "No extra dependencies"
     }
   }
 }

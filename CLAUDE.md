@@ -10,7 +10,7 @@ Claude Code hook system with two complementary security layers:
 
 Both run as `PreToolUse` hooks on `Bash` commands. The regex filter runs first (<1ms), the NLP filter second (3-25ms depending on plugin).
 
-## Commands
+## Commands -101
 
 ```bash
 # Run all tests
